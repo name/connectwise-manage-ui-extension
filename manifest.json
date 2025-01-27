@@ -1,0 +1,27 @@
+{
+  "name": "ConnectWise UI Modernizer",
+  "version": "1.0",
+  "manifest_version": 3,
+  "description": "Modernizes ConnectWise Manage UI",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://helpdesk.stranet.com/*"
+      ],
+      "css": [
+        "style.css"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
