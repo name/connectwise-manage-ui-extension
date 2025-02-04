@@ -1,23 +1,100 @@
-// popup.js
-document.addEventListener('DOMContentLoaded', () => {
-  const toggleCheckbox = document.getElementById('enableModernUI');
+document.addEventListener('DOMContentLoaded', async () => {
+  const settingsDiv = document.getElementById('settings');
+  const { settings } = await chrome.storage.sync.get('settings');
 
-  // Load saved state
-  chrome.storage.sync.get(['enableModernUI'], (result) => {
-    toggleCheckbox.checked = result.enableModernUI !== false;
-  });
+  // Section order and titles
+  const sections = [
+    { id: 'buttonColors', title: 'Button Colors' },
+    { id: 'replaceElements', title: 'UI Elements' },
+    { id: 'styleFixes', title: 'Style Fixes' },
+    { id: 'hideElements', title: 'Hide Elements' }
+  ];
 
-  // Handle toggle changes
-  toggleCheckbox.addEventListener('change', (e) => {
-    const isEnabled = e.target.checked;
+  // Create sections in order
+  sections.forEach(({ id, title }) => {
+    if (CONNECTWISE_MODS[id]) {
+      const sectionDiv = document.createElement('div');
 
-    chrome.storage.sync.set({ enableModernUI: isEnabled });
+      // Add section title
+      const titleDiv = document.createElement('div');
+      titleDiv.className = 'section-title';
+      titleDiv.textContent = title;
+      sectionDiv.appendChild(titleDiv);
 
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, {
-        action: 'toggleUI',
-        enabled: isEnabled
+      // Add section content
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'mod-section';
+
+      // Add toggles for each sub-setting
+      Object.entries(CONNECTWISE_MODS[id]).forEach(([key, config]) => {
+        if (typeof config === 'object' && 'enabled' in config) {
+          const item = createToggle(
+            `${id}-${key}`,
+            config.description,
+            settings?.[id]?.[key]?.enabled ?? config.enabled,
+            (checked) => updateSetting(id, key, checked)
+          );
+          contentDiv.appendChild(item);
+        }
       });
-    });
+
+      sectionDiv.appendChild(contentDiv);
+      settingsDiv.appendChild(sectionDiv);
+    }
   });
 });
+
+function createToggle(id, label, checked, onChange) {
+  const div = document.createElement('div');
+  div.className = 'mod-item';
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.id = id;
+  checkbox.checked = checked;
+  checkbox.addEventListener('change', (e) => onChange(e.target.checked));
+
+  const labelElement = document.createElement('label');
+  labelElement.htmlFor = id;
+  labelElement.textContent = label;
+
+  div.appendChild(checkbox);
+  div.appendChild(labelElement);
+  return div;
+}
+
+async function updateSetting(modType, key, value) {
+  try {
+    const { settings = {} } = await chrome.storage.sync.get('settings');
+
+    if (!settings[modType]) settings[modType] = {};
+    if (!settings[modType][key]) settings[modType][key] = {};
+    settings[modType][key].enabled = value;
+
+    await chrome.storage.sync.set({ settings });
+
+    // Notify content script to refresh
+    const tabs = await chrome.tabs.query({ url: ['*://helpdesk.stranet.com/*'] });
+
+    const updatePromises = tabs.map(tab =>
+      chrome.tabs.sendMessage(tab.id, {
+        type: 'refreshTheme',
+        modType,
+        key,
+        value
+      }).catch(err => console.error(`Failed to update tab ${tab.id}:`, err))
+    );
+
+    await Promise.all(updatePromises);
+
+    // Visual feedback
+    const checkbox = document.getElementById(`${modType}-${key}`);
+    if (checkbox) {
+      checkbox.classList.add('updated');
+      setTimeout(() => checkbox.classList.remove('updated'), 500);
+    }
+  } catch (error) {
+    console.error('Failed to update setting:', error);
+    alert('Failed to update setting. Check console for details.');
+  }
+} 

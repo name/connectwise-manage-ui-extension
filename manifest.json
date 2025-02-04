@@ -1,12 +1,20 @@
 {
-  "name": "ConnectWise UI Modernizer",
-  "version": "1.0",
   "manifest_version": 3,
-  "description": "Modernizes ConnectWise Manage UI",
+  "name": "ConnectWise Toggler",
+  "version": "1.0",
+  "description": "A Chrome extension to toggle UI features in ConnectWise",
+  "icons": {
+    "128": "icon.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
   "permissions": [
-    "storage",
-    "activeTab",
-    "tabs"
+    "storage"
+  ],
+  "host_permissions": [
+    "*://helpdesk.stranet.com/*"
   ],
   "content_scripts": [
     {
@@ -14,14 +22,26 @@
         "*://helpdesk.stranet.com/*"
       ],
       "css": [
-        "style.css"
+        "styles.css"
       ],
       "js": [
+        "config.js",
         "content.js"
       ]
     }
   ],
-  "action": {
-    "default_popup": "popup.html"
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "styles.css",
+        "icon.png"
+      ],
+      "matches": [
+        "*://helpdesk.stranet.com/*"
+      ]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
   }
 }
